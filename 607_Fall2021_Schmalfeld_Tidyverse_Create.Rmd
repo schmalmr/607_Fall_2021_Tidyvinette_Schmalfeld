@@ -1,0 +1,329 @@
+---
+title: "Tidyverse_Vignette GGPlot and Mutate"
+author: "Mark Schmalfeld"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r}
+library(tidyverse)
+library(latexpdf)
+```
+
+
+# Overview of 16 personality factor (PF) test from Kagle dataset 
+
+##The dataset for this vignette uses the Kagle dataset for the 16 personality factor test. 
+
+###1)Pre-setup required using the sumarise, mutate, and rowwise functions to prepare the data prior to graphing.
+###2)GGPlot is used to explore a few of the basic data variables and to demonstrate how ggplot can be used in several different ways.
+
+What is the 16 PF data set?
+Questions, answers, and metadata collected from 49,159 16 Factor Personality Tests. The data was hosted on OpenPsychometrics.org a nonprofit effort to educate the public about psychology and to collect data for psychological research. Their notes on the data collected in the codebook.html.
+
+##### From Wikipedia:
+
+The Sixteen Personality Factor Questionnaire (16PF) is a self-report personality test developed over several decades of empirical research by Raymond B. Cattell, Maurice Tatsuoka and Herbert Eber. The 16PF provides a measure of normal personality and can also be used by psychologists, and other mental health professionals, as a clinical instrument to help diagnose psychiatric disorders, and help with prognosis and therapy planning. The 16PF can also provide information relevant to the clinical and counseling process, such as an individual’s capacity for insight, self-esteem, cognitive style, internalization of standards, openness to change, capacity for empathy, level of interpersonal trust, quality of attachments, interpersonal needs, attitude toward authority, reaction toward dynamics of power, frustration tolerance, and coping style. Thus, the 16PF instrument provides clinicians with a normal-range measurement of anxiety, adjustment, emotional stability and behavioral problems. Clinicians can use 16PF results to identify effective strategies for establishing a working alliance, to develop a therapeutic plan, and to select effective therapeutic interventions or modes of treatment. It can also be used within other areas of psychology, such as career and occupational selection.
+
+### 16 factors and column letter sequence of questions it is correlated with in the table
+
+A) Warmth: Outgoing versus reserved
+B) Reasoning: Abstract versus concrete
+C) Emotional stability: Calm versus high-strung
+D) Dominance: Forceful versus submissive
+E)Liveliness: Spontaneous versus restrained
+F)Perfectionism: Controlled versus undisciplined
+G) Social boldness: Uninhibited versus shy
+H) Sensitivity: Tender-hearted versus tough-minded
+I) Vigilance: Suspicious versus trusting
+J) Privateness: Discreet versus open
+K) Openness to change: Flexible versus attached to the familiar
+L) Apprehension: Worried versus confident
+M) Abstractedness: Imaginative versus practical
+N) Self-reliance: Self-sufficient versus dependent
+O) Rule-consciousness: Conforming versus non-conforming
+P) Tension: Inpatient versus relaxed
+
+
+Datasource URL
+
+https://www.kaggle.com/lucasgreenwell/16-factor-personality-test-responses
+
+Github download URL
+
+https://raw.githubusercontent.com/schmalmr/607_Fall_2021_Tidyvinette_Schmalfeld/main/data.csv
+
+https://raw.githubusercontent.com/schmalmr/607_Fall_2021_Tidyvinette_Schmalfeld/main/codebook.html
+
+
+
+```{r personality factor dataset}
+
+url="https://raw.githubusercontent.com/schmalmr/607_Fall_2021_Tidyvinette_Schmalfeld/main/data.csv"
+
+pfdf<-read.csv(url,header=TRUE, sep="")
+
+```
+
+
+##First pass data sorting and analysis summary of the 16 categories
+
+1) Each letter is correlated with a specific series of questions for a given personality factor
+2)Initial analysis is to calculate the row wise mean for each of the personality factors to allow for data analysis on the specific factor related to the individual demographics
+3)Demographics is primarily age, gender, country, set assessent of accuracy, time to take text and location where test was taken (or sourced)
+4) After the first pass simple averages completed in new columns. Some graphical analysis of the data is completed.
+
+
+#What is "summarise" used for in this case?
+
+Details can be obtained from the help bar in R by typing in summarize or summarise.
+
+#####A few of the details and examples are below from the help menu:
+summarise() creates a new data frame. It will have one (or more) rows for each combination of grouping variables; if there are no grouping variables, the output will have a single row summarising all observations in the input. It will contain one column for each grouping variable and one column for each of the summary statistics that you have specified.
+
+summarise() and summarize() are synonyms.
+
+Usage
+summarise(.data, ..., .groups = NULL)
+
+summarize(.data, ..., .groups = NULL)
+
+Examples
+### A summary applied to ungrouped tbl returns a single row
+mtcars %>%
+  summarise(mean = mean(disp), n = n())
+
+### Usually, you'll want to group first
+mtcars %>%
+  group_by(cyl) %>%
+  summarise(mean = mean(disp), n = n())
+
+### dplyr 1.0.0 allows to summarise to more than one value:
+mtcars %>%
+   group_by(cyl) %>%
+   summarise(qs = quantile(disp, c(0.25, 0.75)), prob = c(0.25, 0.75))
+
+### You use a data frame to create multiple columns so you can wrap
+### this up into a function:
+my_quantile <- function(x, probs) {
+  tibble(x = quantile(x, probs), probs = probs)
+}
+mtcars %>%
+  group_by(cyl) %>%
+  summarise(my_quantile(disp, c(0.25, 0.75)))
+
+### Each summary call removes one grouping level (since that group
+### is now just a single row)
+mtcars %>%
+  group_by(cyl, vs) %>%
+  summarise(cyl_n = n()) %>%
+  group_vars()
+
+
+
+
+#What is "rowwise" function and how is it used?
+
+##Key summary and a few examples from help menu. Find full details in the R help bar.
+Rowwise() allows you to compute on a data frame a row-at-a-time. This is most useful when a vectorised function doesn't exist.
+
+Most dplyr verbs preserve row-wise grouping. The exception is summarise(), which return a grouped_df. You can explicitly ungroup with ungroup() or as_tibble(), or convert to a grouped_df with group_by().
+
+Usage
+rowwise(data, ...)
+
+Examples of the use of Rowwise
+df <- tibble(x = runif(6), y = runif(6), z = runif(6))
+### Compute the mean of x, y, z in each row
+df %>% rowwise() %>% mutate(m = mean(c(x, y, z)))
+### use c_across() to more easily select many variables
+df %>% rowwise() %>% mutate(m = mean(c_across(x:z)))
+
+### Compute the minimum of x and y in each row
+df %>% rowwise() %>% mutate(m = min(c(x, y, z)))
+###In this case you can use an existing vectorised function:
+df %>% mutate(m = pmin(x, y, z))
+### Where these functions exist they'll be much faster than rowwise
+###so be on the lookout for them.
+
+### Here I supply variables to preserve after the summary
+params %>%
+  rowwise(sim) %>%
+  summarise(z = rnorm(n, mean, sd))
+
+
+#What is  "mutate" and how is it used? 
+
+## Key summary of Mutate and a few examples from the help section of R. Additional details found in the help menu in R.
+
+Create, modify, and delete columns
+Description
+mutate() adds new variables and preserves existing ones; transmute() adds new variables and drops existing ones. New variables overwrite existing variables of the same name. Variables can be removed by setting their value to NULL.
+
+Usage
+mutate(.data, ...)
+
+## S3 method for class 'data.frame'
+mutate(
+  .data,
+  ...,
+  .keep = c("all", "used", "unused", "none"),
+  .before = NULL,
+  .after = NULL
+)
+
+Examples
+### Newly created variables are available immediately
+starwars %>%
+ select(name, mass) %>%
+ mutate(
+  mass2 = mass * 2,
+  mass2_squared = mass2 * mass2
+)
+
+### As well as adding new variables, you can use mutate() to
+### remove variables and modify existing variables.
+starwars %>%
+ select(name, height, mass, homeworld) %>%
+ mutate(
+  mass = NULL,
+  height = height * 0.0328084 # convert to feet
+)
+
+### Use across() with mutate() to apply a transformation
+### to multiple columns in a tibble.
+starwars %>%
+ select(name, homeworld, species) %>%
+ mutate(across(!name, as.factor))
+
+## Below is the application examples of summarize to get the column means and standard deviations.The rowwise means and mutate function calculate the mean for each row for the associated group of questions that are of the same class. There are 16 examples that you can see and compare to what is in the data file.
+
+```{r create the means for overall and the personality trait}
+
+(pfdfmean<-pfdf %>% summarise_if(is.numeric, mean))
+(pfdfsd<-pfdf %>% summarise_if(is.numeric, sd))
+
+
+pfdf<-pfdf %>% rowwise() %>% mutate(Amean=mean(c(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Bmean=mean(c(B1,B2,B3,B4,B5,B6,B7,B8,B9,B10, B11, B12,B13)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Cmean=mean(c(C1,C2,C3,C4,C5,C6,C7,C8,C9,C10)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Dmean=mean(c(D1,D2,D3,D4,D5,D6,D7,D8,D9,D10)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Emean=mean(c(E1,E2,E3,E4,E5,E6,E7,E8,E9,E10)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Fmean=mean(c(F1,F2,F3,F4,F5,F6,F7,F8,F9,F10)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Gmean=mean(c(G1,G2,G3,G4,G5,G6,G7,G8,G9,G10)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Hmean=mean(c(H1,H2,H3,H4,H5,H6,H7,H8,H9,H10)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Imean=mean(c(I1,I2,I3,I4,I5,I6,I7,I8,I9,I10)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Jmean=mean(c(J1,J2,J3,J4,J5,J6,J7,J8,J9,J10)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Kmean=mean(c(K1,K2,K3,K4,K5,K6,K7,K8,K9,K10)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Lmean=mean(c(L1,L2,L3,L4,L5,L6,L7,L8,L9,L10)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Mmean=mean(c(M1,M2,M3,M4,M5,M6,M7,M8,M9)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Nmean=mean(c(N1,N2,N3,N4,N5,N6,N7,N8,N9,N10)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Omean=mean(c(O1,O2,O3,O4,O5,O6,O7,O8,O9,O10)))
+pfdf<-pfdf %>% rowwise() %>% mutate(Pmean=mean(c(P1,P2,P3,P4,P5,P6,P7,P8,P9,P10)))
+glimpse(pfdf)
+
+
+```
+
+
+## Vignette Info
+
+Note the various macros within the `vignette` section of the metadata block above. These are required in order to instruct R how to build the vignette. Note that you should change the `title` field and the `\VignetteIndexEntry` to match the title of your vignette.
+
+##What is ggplot2 and provide a couple of basic examples of the use of scatter plots and an example of a box plot?
+
+Details on ggplot2 can be found at the following link:  https://github.com/tidyverse/ggplot2
+
+Cheat sheet for GGPLOT2 https://github.com/rstudio/cheatsheets/blob/master/data-visualization-2.1.pdf
+
+
+A short summary of the basic elements explored below are as follows described and from the original site on ggplot in tidyverse:
+
+
+"It’s hard to succinctly describe how ggplot2 works because it embodies a deep philosophy of visualisation. However, in most cases you start with ggplot(), supply a dataset and aesthetic mapping (with aes()). You then add on layers (like geom_point() or geom_histogram()), scales (like scale_colour_brewer()), faceting specifications (like facet_wrap()) and coordinate systems (like coord_flip())."
+
+ggplot2 is a vast ecosystem of visualization tools.  This will focus on a couple of basic plots to provide exposured to ggplot.  The scatter plot and a box plot.
+
+#Part 1: This is basic scatter plot format.  pfdf is the dataframe and the x and y values are the two axis.
+geom_point ensures we plot a point and you can set the size and also the shape.  There are no axis limits, no tittles and no special features.
+
+"ggplot(pfdf,aes(y=elapsed, x=age))+geom_point(size=2)"
+
+Try this to see what happens. 
+
+#Part 2: Adjust your basic scatter plot to control the axis ranges.
+
+In this case you can and should add a limit to the respondents age. (over 100 years old is likely too high and also a time limit in seconds which is the y axis in this case)  Adding limits is preferred in exploring the data as it does not change the dataset to start but makes it more useable or transparent what is happening with the data.
+
+ggplot(pfdf,aes(y=elapsed, x=age))+geom_point(size=2)+ylim(0,250000)+xlim(0,100)
+
+#Part 3: Extending the scatter plot to include more features with a layer(color)
+
+You can then add another feature to the graph by adding a color feature. In this case we added gender. We also decided to look at another variable the accuracy of the assessment which we limited to 100% max accuracy and 0% min accuracy. 
+
+We still have no graph title included yet.
+
+ggplot(pfdf,aes(x=accuracy, y=elapsed, color=gender))+geom_point(size=2)+xlim(0,100)+ylim(0,250000)
+
+#Part 4:  Extend to add titles and change to a box plot
+
+You can now add a title to the graph as shown below with ggtitle
+and change to a boxplot of a variable with geom_boxplot() (instead of geom_point())
+
+ggplot(pfdf,aes(x=gender,y=Imean))+geom_boxplot()+ggtitle("Average Vigilance boxplot")
+
+Also a included is the simple first pass attempt to overlap the country into the mix. 
+It appears too messy to be of much value. So, we need to rethink this and look for an approach.
+What do you see as the next potential approach to analyze by country and would you expect this to be important?  Likley the country analysis or grouping of the countrys by specific cultural indicators and environment would be interesting.  
+
+A next step is to plot individual country scores and evaluate this or to group by similar country culture and demographic profiles to see if there are statistically significant differences.
+
+
+
+
+
+
+## Figures for simple GGPLOT2 demonstration of scatter plot and a box plot
+
+The figure sizes have been customised so that you can easily put two images side-by-side. 
+
+```{r, and plots examples using ggplot, echo=FALSE}
+
+ggplot(pfdf,aes(y=elapsed, x=age))+geom_point(size=2)+ylim(0,250000)+xlim(0,100)
+ggplot(pfdf,aes(x=accuracy, y=elapsed, color=gender))+geom_point(size=2)+xlim(0,100)+ylim(0,250000)
+ggplot(pfdf,aes(x=accuracy, y=age))+geom_point(size=2)+ylim(0,100)+xlim(0,100)
+ggplot(pfdf,aes(y=age, x=accuracy, color=source))+geom_point(size=2)+xlim(0,100)+ylim(0,100)
+
+# Evaluation of the specific question type mean vs age, gender.
+ggplot(pfdf,aes(y=Amean, x=age,color=gender))+geom_point(size=2)+xlim(0,100)+ggtitle("Average Outgoing vs Reserved score vs age, gender overlay")
+ggplot(pfdf,aes(y=Bmean, x=age,color=gender))+geom_point(size=2)+xlim(0,100)+ggtitle("Average Abstract vs concrete reasoning by age and overlay gender")
+ggplot(pfdf,aes(y=Cmean, x=age,color=gender))+geom_point(size=2)+xlim(0,100)+ggtitle("Average Emotional Stability by age and overlay gender")
+ggplot(pfdf,aes(y=Imean, x=age,color=gender))+geom_point(size=2)+xlim(0,100)+ggtitle("Average Vigilance by age and overlay gender")
+ggplot(pfdf,aes(y=Jmean, x=age,color=gender))+geom_point(size=2)+xlim(0,100)+ggtitle("Average Privateness by age and overlay gender")
+ggplot(pfdf,aes(y=Kmean, x=age,color=gender))+geom_point(size=2)+xlim(0,100)+ggtitle("Average openness to change by age and overlay gender")
+
+
+
+#Box plot example code
+ggplot(pfdf,aes(x=gender,y=Imean))+geom_boxplot()+ggtitle("Average Vigilance boxplot")
+ggplot(pfdf,aes(x=gender,y=Jmean))+geom_boxplot()+ggtitle("Average priviteness boxplot")
+ggplot(pfdf,aes(x=gender,y=Kmean))+geom_boxplot()+ggtitle("Average openess to change boxplot")
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+
+
+
